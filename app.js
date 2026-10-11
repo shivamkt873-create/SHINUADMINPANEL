@@ -1,0 +1,13 @@
+const $=id=>document.getElementById(id);
+async function api(url,opts={}){const r=await fetch(url,{...opts,headers:{"Content-Type":"application/json",...(opts.headers||{})},credentials:"same-origin"});let d={};try{d=await r.json()}catch{}if(!r.ok)throw new Error(d.error||"Request failed");return d}
+function showApp(){ $("login").classList.add("hidden");$("app").classList.remove("hidden");load()}
+function showLogin(){ $("app").classList.add("hidden");$("login").classList.remove("hidden")}
+async function load(){try{await api("/api/admin/me");const d=await api("/api/admin/licenses");$("rows").innerHTML=d.licenses.map(x=>{const expired=new Date(x.expires_at)<=new Date(),status=!x.active?["Deactivated","off"]:expired?["Expired","expired"]:["Active","pill"];return `<tr><td>${x.id}</td><td class="key">${x.key_prefix}…</td><td>${esc(x.label||"—")}</td><td>${new Date(x.created_at).toLocaleDateString()}</td><td>${new Date(x.expires_at).toLocaleDateString()}</td><td><span class="pill ${status[1]}">${status[0]}</span></td><td><button class="${x.active?"danger":"secondary"}" data-id="${x.id}" data-active="${!x.active}">${x.active?"Deactivate":"Reactivate"}</button></td></tr>`}).join("")||'<tr><td colspan="7" class="muted">No licenses yet.</td></tr>'}catch(e){showLogin()}}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+$("loginBtn").onclick=async()=>{try{await api("/api/admin/login",{method:"POST",body:JSON.stringify({username:$("username").value,password:$("password").value})});$("loginMsg").textContent="";$("password").value="";showApp()}catch(e){$("loginMsg").textContent=e.message}};
+$("logoutBtn").onclick=async()=>{try{await api("/api/admin/logout",{method:"POST",body:"{}"})}finally{showLogin()}};
+$("days").onchange=()=> $("customWrap").classList.toggle("hidden",$("days").value!=="custom");
+$("generateBtn").onclick=async()=>{try{$("actionMsg").textContent="";const body={label:$("label").value};if($("days").value==="custom"){if(!$("customDate").value)throw new Error("Choose expiry date");body.expiresAt=$("customDate").value+"T23:59:59.000Z"}else body.days=Number($("days").value);const d=await api("/api/admin/licenses",{method:"POST",body:JSON.stringify(body)});$("newKey").textContent="Copy this key now (it is shown only once): "+d.license.key;$("label").value="";await load()}catch(e){$("actionMsg").textContent=e.message}};
+$("rows").onclick=async e=>{const b=e.target.closest("button[data-id]");if(!b)return;try{await api("/api/admin/licenses/"+b.dataset.id,{method:"PATCH",body:JSON.stringify({active:b.dataset.active==="true"})});await load()}catch(err){alert(err.message)}};
+$("refreshBtn").onclick=load;
+api("/api/admin/me").then(showApp).catch(showLogin);
