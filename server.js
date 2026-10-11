@@ -32,6 +32,8 @@ app.use(express.json({limit:"20kb"}));
 app.use(cookieParser());
 app.use(express.static("public"));
 
+app.get("/", (req, res) => res.sendFile(__dirname + "/index.html"));
+app.get("/app.js", (req, res) => res.sendFile(__dirname + "/app.js"));
 const loginLimiter = rateLimit({windowMs: 15*60*1000, max: 8, standardHeaders: true, legacyHeaders: false});
 const apiLimiter = rateLimit({windowMs: 60*1000, max: 60, standardHeaders: true, legacyHeaders: false});
 
